@@ -478,6 +478,7 @@ struct ContentView: View {
         }
     }
     
+    
     // Misc
     func deleteCurrentNote() {
         guard let index = selectedNoteIndex, index < allNotes.count else { return }
