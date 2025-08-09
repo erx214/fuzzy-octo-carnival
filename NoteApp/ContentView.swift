@@ -367,28 +367,48 @@ struct ContentView: View {
     func handleAutoFormatting(oldValue: String, newValue: String) {
         guard activeMode != .none else { return }
         
+        // Exit sticky mode on double enter
+        if newValue.hasSuffix("\n\n") {
+            DispatchQueue.main.async {
+                self.activeMode = .none
+            }
+            return
+        }
+        
         let oldLines = oldValue.components(separatedBy: .newlines)
         let newLines = newValue.components(separatedBy: .newlines)
         
-        if newLines.count > oldLines.count {
-            let lastLine = newLines.last ?? ""
-            
-            if lastLine.isEmpty {
-                DispatchQueue.main.async {
-                    self.noteContent = newValue + activeMode.prefix
-                }
-            } else if !lastLine.hasPrefix(activeMode.prefix) {
-                var lines = newLines
-                lines[lines.count - 1] = activeMode.prefix + lastLine
-                DispatchQueue.main.async {
-                    self.noteContent = lines.joined(separator: "\n")
-                }
+        // Only process if a new line was added
+        guard newLines.count > oldLines.count else { return }
+        
+        let lastLine = newLines.last ?? ""
+        
+        // If last line is empty or doesn't have prefix, add the prefix
+        if lastLine.isEmpty {
+            DispatchQueue.main.async {
+                self.noteContent = newValue + self.activeMode.prefix
+            }
+        } else if !lastLine.hasPrefix(activeMode.prefix) {
+            var lines = newLines
+            lines[lines.count - 1] = activeMode.prefix + lastLine
+            DispatchQueue.main.async {
+                self.noteContent = lines.joined(separator: "\n")
             }
         }
         
-        // Exit sticky mode if user presses Enter twice
-        if newValue.hasSuffix("\n\n") {
-            activeMode = .none
+        // Exit sticky mode if user enters on a line with just the prefix
+        if newLines.count >= 2 {
+            let previousLine = newLines[newLines.count - 2].trimmingCharacters(in: .whitespaces)
+            if previousLine == activeMode.prefix.trimmingCharacters(in: .whitespaces) && lastLine.isEmpty {
+                DispatchQueue.main.async {
+                    // Clean up the content and exit mode
+                    var lines = newLines
+                    lines.removeLast(2)
+                    lines.append("")
+                    self.noteContent = lines.joined(separator: "\n")
+                    self.activeMode = .none
+                }
+            }
         }
     }
     
